@@ -1,7 +1,30 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
-class ResponsiveLayout extends StatelessWidget {
+class ResponsiveLayout extends StatefulWidget {
   const ResponsiveLayout({super.key});
+
+  @override
+  State<ResponsiveLayout> createState() => _ResponsiveLayoutState();
+}
+
+class _ResponsiveLayoutState extends State<ResponsiveLayout> {
+  List<dynamic> _data = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    final String response = await rootBundle.loadString('assets/data/layout_data.json');
+    final data = await json.decode(response);
+    setState(() {
+      _data = data;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -15,52 +38,43 @@ class ResponsiveLayout extends StatelessWidget {
           fontWeight: FontWeight.bold,
         ),
       ),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          // If the screen width is less than 600 pixels, display a Column (mobile view)
-          if (constraints.maxWidth < 600) {
-            return ListView(
-              children: <Widget>[
-                _buildInfoCard(Colors.red, 'Section 1', 'This is the first section, displayed vertically on smaller screens.'),
-                _buildInfoCard(Colors.green, 'Section 2', 'This is the second section, stacked below the first one.'),
-                _buildInfoCard(Colors.blue, 'Section 3', 'This is the third section, providing more content in the list.'),
-              ],
-            );
-          } else {
-            // If the screen width is 600 pixels or more, display a Row (desktop view)
-            return const Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Expanded(
-                  child: InfoPanel(
-                    color: Colors.red,
-                    title: 'Panel 1',
-                    description: 'This is the first panel, displayed horizontally on wider screens for a desktop-like experience.',
-                  ),
-                ),
-                Expanded(
-                  child: InfoPanel(
-                    color: Colors.green,
-                    title: 'Panel 2',
-                    description: 'This is the second panel, appearing next to the first one to utilize the available horizontal space.',
-                  ),
-                ),
-                Expanded(
-                  child: InfoPanel(
-                    color: Colors.blue,
-                    title: 'Panel 3',
-                    description: 'This is the third panel, completing the row layout for larger screens.',
-                  ),
-                ),
-              ],
-            );
-          }
-        },
-      ),
+      body: _data.isEmpty
+          ? const Center(child: CircularProgressIndicator())
+          : LayoutBuilder(
+              builder: (context, constraints) {
+                if (constraints.maxWidth < 600) {
+                  // Mobile view
+                  return ListView.builder(
+                    itemCount: _data.length,
+                    itemBuilder: (context, index) {
+                      final item = _data[index];
+                      return _buildInfoCard(
+                        Color(int.parse(item['color'])),
+                        item['title'],
+                        item['description'],
+                      );
+                    },
+                  );
+                } else {
+                  // Desktop view
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: _data.map((item) {
+                      return Expanded(
+                        child: InfoPanel(
+                          color: Color(int.parse(item['color'])),
+                          title: item['title'],
+                          description: item['description'],
+                        ),
+                      );
+                    }).toList(),
+                  );
+                }
+              },
+            ),
     );
   }
 
-  // Helper method to build cards for the mobile layout
   Widget _buildInfoCard(Color color, String title, String description) {
     return Card(
       margin: const EdgeInsets.all(10),
@@ -93,7 +107,6 @@ class ResponsiveLayout extends StatelessWidget {
   }
 }
 
-// A widget for the desktop layout panels
 class InfoPanel extends StatelessWidget {
   final Color color;
   final String title;
